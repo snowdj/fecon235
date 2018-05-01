@@ -1,4 +1,4 @@
-#  Python Module for import                           Date : 2016-01-20
+#  Python Module for import                           Date : 2018-03-11
 #  vim: set fileencoding=utf-8 ff=unix tw=78 ai syn=python : per Python PEP 0263 
 ''' 
 _______________|  yi_fred.py : Access FRED with pandas for plots, etc.
@@ -27,6 +27,12 @@ References:
 
 
 CHANGE LOG  For latest version, see https://github.com/rsvp/fecon235
+2018-03-11  holtfred() superceded by foreholt(), yet moved to fecon235 module.
+2017-01-06  Add USDCNY daily series, Chinese Yuan from FRB H-10.
+2016-12-21  Add Fed Funds and its "30-day" ema as d4ff and d4ff30.
+2016-11-06  New resample_main() fixes #6 deprecations, and is used to
+               rewrite daily(), monthly(), quarterly().
+2016-11-05  New index_delta_secs() to infer index frequency in seconds.
 2016-01-20  Logical move of plotdf() to yi_plot module.
 2015-12-20  python3 compatible: lib import fix.
 2015-12-17  python3 compatible: use absolute_import.
@@ -86,6 +92,7 @@ except ImportError:
     from urllib2 import urlopen
     #    ^for python2 
 
+import numpy as np
 import pandas as pd
 from . import yi_0sys as system
 from . import yi_1tools as tools
@@ -124,6 +131,8 @@ d4defl    = 'd4defl'             # synthetic deflator dataframe, see deflator()
 d4libjpy  = 'JPY3MTD156N'        # 3-m LIBOR JPY, daily
 d4libeur  = 'EUR3MTD156N'        # 3-m LIBOR EUR, daily
 d4libusd  = 'USD3MTD156N'        # 3-m LIBOR USD, daily
+d4ff      = 'DFF'                # Fed Funds, daily since 1954
+d4ff30    = 'd4ff30'             # Fed Funds synthetic, "30-day" exp.mov.avg.
 d4bills   = 'DTB3'               # Treasury bills, daily
 d4zero10  = 'd4zero10'           # Zero-coupon price of Treasury 10-y, daily
 d4bond10  = 'DGS10'              # Treasury 10-y constant, daily
@@ -134,6 +143,7 @@ d4bei     = 'd4bei'              # 10_y Break-even inflation, getfred synthetic
 d4usdjpy  = 'DEXJPUS'            # USDJPY, daily
 d4eurusd  = 'DEXUSEU'            # EURUSD, daily
 d4eurjpy  = 'd4eurjpy'           # EURJPY, daily, getfred synthetic
+d4usdcny  = 'DEXCHUS'            # USDCNY, daily since 1981, not offshore USDCNH
 
 d4xau     = 'GOLDPMGBD228NLBM'   # London PM Gold fix, daily
 d4xauusd  =  d4xau               #  " synonym
@@ -305,57 +315,105 @@ def getdata_fred( fredcode ):
     return readfile( fredcsv )
 
 
+def index_delta_secs( dataframe ):
+    '''Find minimum in seconds between index values.'''
+    nanosecs_timedelta64 = np.diff(dataframe.index.values).min()
+    #  Picked min() over median() to conserve memory;      ^^^^^!
+    #  also avoids missing values issue, 
+    #  e.g. weekend or holidays gaps for daily data.
+    secs_timedelta64 = tools.div( nanosecs_timedelta64, 1e9 )
+    #  To avoid numerical error, we divide before converting type: 
+    secs = secs_timedelta64.astype( np.float32 )
+    if secs == 0.0:
+        system.warn('Index contains duplicate, min delta was 0.')
+        return secs
+    else:
+        return secs
 
-#  For details on frequency conversion, see McKinney 2103, 
-#       Chp. 10 Resampling, esp. Table 10-5 on downsampling.
-#       pandas defaults are:
-#            how='mean', closed='right', label='right'
+    #  There are OTHER METHODS to get the FREQUENCY of a dataframe:
+    #       e.g.  df.index.freq  OR  df.index.freqstr , 
+    #  however, these work only if the frequency was attributed:
+    #       e.g.  '1 Hour'       OR  'H'  respectively. 
+    #  The fecon235 derived dataframes will usually return None.
+    #  
+    #  Two timedelta64 units, 'Y' years and 'M' months, are 
+    #  specially treated because the time they represent depends upon
+    #  their context. While a timedelta64 day unit is equivalent to 
+    #  24 hours, there is difficulty converting a month unit into days 
+    #  because months have varying number of days. 
+    #       Other numpy timedelta64 units can be found here: 
+    #  http://docs.scipy.org/doc/numpy/reference/arrays.datetime.html
+    #  
+    #  For pandas we could do:  pd.infer_freq( df.index )
+    #  which, for example, might output 'B' for business daily series.
+    #  
+    #  But the STRING representation of index frequency is IMPRACTICAL
+    #  since we may want to compare two unevenly timed indexes. 
+    #  That comparison is BEST DONE NUMERICALLY in some common unit 
+    #  (we use seconds since that is the Unix epoch convention).
+    #
+    #  Such comparison will be crucial for the machine 
+    #  to chose whether downsampling or upsampling is appropriate.
+    #  The casual user should not be expected to know the functions
+    #  within index_delta_secs() to smoothly work with a notebook.
+
+
+#  For details on frequency conversion, see McKinney 2013, 
+#       Chp. 10 RESAMPLING, esp. Table 10-5 on downsampling.
+#       pandas defaults are:  how='mean', closed='right', label='right'
 #
 #  2014-08-10  closed and label to the 'left' conform to FRED practices.
 #              how='median' since it is more robust than 'mean'. 
 #  2014-08-14  If upsampling, interpolate() does linear evenly, 
 #              disregarding uneven time intervals.
+#  2016-11-06  McKinney 2013 on resampling is outdated as of pandas 0.18
+
+
+def resample_main( dataframe, rule, secs ):
+    '''Generalized resample routine for downsampling or upsampling.'''
+    #  rule is the offset string or object representing target conversion,
+    #       e.g. 'B', 'MS', or 'QS-OCT' to be compatible with FRED.
+    #  secs should be the maximum seconds expected for rule frequency.
+    if index_delta_secs(dataframe) < secs:
+        df = dataframe.resample(rule, closed='left', label='left').median()
+        #    how='median' for DOWNSAMPLING deprecated as of pandas 0.18
+        return df
+    else:
+        df = dataframe.resample(rule, closed='left', label='left').fillna(None)
+        #    fill_method=None for UPSAMPLING deprecated as of pandas 0.18
+        #    note that None almost acts like np.nan which fails as argument.
+        #    interpolate() applies to those filled nulls when upsampling:
+        #    'linear' ignores index values treating it as equally spaced.
+        return df.interpolate(method='linear')
 
 
 def daily( dataframe ):
-     '''Resample data to daily using only business days.'''
-     #                         'D' is used calendar daily
-     #                          B  for business daily
-     df =   dataframe.resample('B', how='median', 
-                                    closed='left', label='left', 
-                                    fill_method=None)
-     #       how= for downsampling, fill_method= for upsampling.
-     return df.interpolate(method='linear')
-     #         ^applies to nulls, if upsampling.
+    '''Resample data to daily using only business days.'''
+    #                         'D' is used calendar daily
+    #                         'B' for business daily
+    secs1day2hours = 93600.0
+    return resample_main( dataframe, 'B', secs1day2hours )
 
 
 def monthly( dataframe ):
-     '''Resample data to FRED's month start frequency.'''
-     #  FRED uses the start of the month to index its monthly data.
-     #                         'M' is used for end of month.
-     #                          MS for start of month.
-     df =   dataframe.resample('MS', how='median', 
-                                     closed='left', label='left', 
-                                     fill_method=None)
-     #        how= for downsampling, fill_method= for upsampling.
-     return df.interpolate(method='linear')
-     #         ^applies to nulls, if upsampling.
+    '''Resample data to FRED's month start frequency.'''
+    #  FRED uses the start of the month to index its monthly data.
+    #                         'M'  is used for end of month.
+    #                         'MS' for start of month.
+    secs31days = 2678400.0
+    return resample_main( dataframe, 'MS', secs31days )
 
 
 def quarterly( dataframe ):
-     '''Resample data to FRED's quarterly start frequency.'''
-     #  FRED uses the start of the month to index its monthly data.
-     #  Then for quarterly data: 1-01, 4-01, 7-01, 10-01.
-     #                            Q1    Q2    Q3     Q4
-     #
-     #                          ______Start at first of months,
-     #                          ______for year ending in indicated month.
-     df =   dataframe.resample('QS-OCT', how='median', 
-                                         closed='left', label='left', 
-                                         fill_method=None)
-     #            how= for downsampling, fill_method= for upsampling.
-     return df.interpolate(method='linear')
-     #         ^applies to nulls, if upsampling.
+    '''Resample data to FRED's quarterly start frequency.'''
+    #  FRED uses the start of the month to index its monthly data.
+    #  Then for quarterly data: 1-01, 4-01, 7-01, 10-01.
+    #                            Q1    Q2    Q3     Q4
+    #  ________ Start at first of months,
+    #  ________ for year ending in indicated month.
+    #  'QS-OCT'
+    secs93days = 8035200.0
+    return resample_main( dataframe, 'QS-OCT', secs93days )
 
 
 
@@ -524,6 +582,9 @@ def getfred( fredcode ):
           xauusd = getfred( m4xau ) / float(1000)
           df = usdrtb * xauusd
 
+     elif fredcode == d4ff30:
+          df = ts.ema(getdata_fred( d4ff ), 0.0645)
+          #       exponential moving avg.   ^"30-day"
      elif fredcode == d4zero10:
           bond10 = getdata_fred( d4bond10 )
           df = tools.zeroprice( bond10, zero10dur )
@@ -588,19 +649,20 @@ def plotfred( data, title='tmp', maxi=87654321 ):
      return
 
 
-
-def holtfred( data, h=24, alpha=ts.hw_alpha, beta=ts.hw_beta ):
-     '''Holt-Winters forecast h-periods ahead (fredcode aware).'''
-     #  "data" can be a fredcode, or a dataframe to be detected:
-     if isinstance( data, pd.DataFrame ):
-          holtdf = ts.holt( data             , alpha, beta )
-     else:
-          fredcode = data
-          holtdf = ts.holt( getfred(fredcode), alpha, beta )
-          #              ^No interim results retained.
-     #    holtdf is expensive to compute, but also not retained.
-     #    For details, see module yi_timeseries.
-     return ts.holtforecast( holtdf, h )
+#  #  ** SUPERCEDED by foreholt(), but moved to fecon235 module
+#  #                for backwards compatibility. **
+#  def holtfred( data, h=24, alpha=ts.hw_alpha, beta=ts.hw_beta ):
+#       '''Holt-Winters forecast h-periods ahead (fredcode aware).'''
+#       #  "data" can be a fredcode, or a dataframe to be detected:
+#       if isinstance( data, pd.DataFrame ):
+#            holtdf = ts.holt( data             , alpha, beta )
+#       else:
+#            fredcode = data
+#            holtdf = ts.holt( getfred(fredcode), alpha, beta )
+#            #              ^No interim results retained.
+#       #    holtdf is expensive to compute, but also not retained.
+#       #    For details, see module yi_timeseries.
+#       return ts.holtforecast( holtdf, h )
     
 
 

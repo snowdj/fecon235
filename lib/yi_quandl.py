@@ -1,4 +1,4 @@
-#  Python Module for import                           Date : 2015-12-20
+#  Python Module for import                           Date : 2017-02-07
 #  vim: set fileencoding=utf-8 ff=unix tw=78 ai syn=python : per Python PEP 0263 
 ''' 
 _______________|  yi_quandl.py : Access Quandl with pandas for plots, etc.
@@ -190,6 +190,11 @@ REFERENCES:
 
 
 CHANGE LOG  For latest version, see https://github.com/rsvp/fecon235
+2017-02-07  Add quandlcode for Bitcoin count and USD price.
+2017-02-06  Use names() within getqdl() to standardize names.
+2016-11-05  Remove comments intended as code templates.
+2016-03-21  Add freqM2MS for compatibility with FRED monthly format.
+               Add m4spx_1871_p, m4spx_1871_e, m4spx_1871_d. 
 2015-12-20  python3 compatible: lib import fix.
 2015-12-17  python3 compatible: fix with yi_0sys
 2015-09-11  Add getfut to quickly retrieve futures price data.
@@ -204,7 +209,7 @@ import pandas as pd
 from . import yi_quandl_api as qdlapi    #  a.k.a. Quandl.py module
 from . import yi_0sys as system
 from . import yi_1tools as tools         
-from . import yi_fred as fred            #  For: plotdf
+from . import yi_fred as fred            #  For: plotdf, freqM2MS
 from . import yi_timeseries as ts        #  esp. Holt-Winters.
 
 
@@ -246,12 +251,26 @@ f4wti         = 'CL'      #  CME/NYMEX Oil
 
 
 
+#      __________ DAILY quandlcode: #  d7 means seven days/week 
+d7xbtusd      = 'BCHAIN/MKPRU'      #  Bitcoin price in USD
+d7xbtcount    = 'BCHAIN/TOTBC'      #  number of Bitcoins (~16 million)
+#  d7xbtcap   = 'BCHAIN/MKTCP'      #  Market capitalization (~16 billion USD)
+#                ...                   ... replicated by d7xbtusd * d7xbtcount
+
+
 #      __________ WEEKLY quandlcode:
 w4cotr_xau      = 'w4cotr_xau'      #  CFTC COTR Manager position: Gold
 w4cotr_metals   = 'w4cotr_metals'   #  CFTC COTR Manager position: Gold, Silver
 w4cotr_usd      = 'w4cotr_usd'      #  CFTC COTR Manager position: US Dollar
 w4cotr_bonds    = 'w4cotr_bonds'    #  CFTC COTR Manager position: Bonds
 w4cotr_equities = 'w4cotr_equities' #  CFTC COTR Manager position: Equities
+
+
+
+#      __________ MONTHLY quandlcode:
+m4spx_1871_p    = 'm4spx_1871_p'    #  Shiller S&P500 nominal price
+m4spx_1871_e    = 'm4spx_1871_e'    #  Shiller S&P500 nominal earnings 12-month
+m4spx_1871_d    = 'm4spx_1871_d'    #  Shiller S&P500 nominal dividends 12-month
 
 
 
@@ -455,6 +474,56 @@ def getfut( slang, maxi=512, col='Settle' ):
 #  different combinations of roll date and price adjustment.
 
 
+def freqM2MS( dataframe ):
+     '''Change Monthly dates to (FRED-compatible) Month Start frequency.'''
+     #  FRED uses first day of month 'MS' to index that month's data,
+     #  whereas Quandl data *may* use varying end of month dates.
+     df = dataframe.set_index(pd.DatetimeIndex(
+                    [i.replace(day=1) for i in dataframe.index]))
+     df.index = df.index.normalize()
+     #  Thus converted to midnight (normalize) first day of month.
+     df.index.name = 'T'
+     #             ... but rename your columns elsewhere.
+     #  Quandl *may* not infer frequency in its transmitted dataframes.
+     #  So lastly, resampling converts index freq from None to 'MS'
+     #  which may be necessary to align operations between dataframes:
+     return fred.monthly( df )
+
+
+#  For details on Shiller m4spx_1871_*, see notebook qdl-spx-earn-div.ipynb
+#  esp. for underlying sources of reconstructed data.
+
+
+def getm4spx_1871_p():
+     '''Retrieve nominal monthly Shiller S&P500 price, starting 1871.'''
+     price  = freqM2MS(quandl( 'MULTPL/SP500_REAL_PRICE_MONTH' ))
+     #                           ^But they meant NOMINAL!
+     #  Their inflation-adjusted monthly series is called
+     #        MULTPL/SP500_INFLADJ_MONTH
+     #  Alternative: official YALE/SPCOMP, but 9 months latency!
+     return tools.todf( price )
+
+
+def getm4spx_1871_e():
+     '''Retrieve nominal monthly Shiller S&P500 earnings, starting 1871.'''
+     ratio = freqM2MS(quandl( 'MULTPL/SP500_PE_RATIO_MONTH' ))
+     #  Gets price/earnings ratio, so solve for 12-month earnings.
+     #  Alternative: official YALE/SPCOMP, but 9 months latency!
+     price = getm4spx_1871_p()
+     earn  = tools.div( price, ratio )
+     return tools.todf( earn )
+
+
+def getm4spx_1871_d():
+     '''Retrieve nominal monthly Shiller S&P500 dividends, starting 1871.'''
+     dyield = freqM2MS(quandl( 'MULTPL/SP500_DIV_YIELD_MONTH' ))
+     #  Gets dividend yield in percentage form, 
+     #  but we want just plain dividends over previous 12 months.
+     #  Alternative: official YALE/SPCOMP, but 9 months latency!
+     dyield = tools.todf(tools.div( dyield, 100 ))
+     price  = getm4spx_1871_p()
+     return tools.todf( dyield * price )
+
 
 def getqdl( quandlcode, maxi=87654321 ):
      '''Retrieve from Quandl in dataframe format, INCL. SPECIAL CASES.
@@ -475,6 +544,13 @@ def getqdl( quandlcode, maxi=87654321 ):
      elif quandlcode == w4cotr_equities:
           df = cotr_position_equities()
 
+     elif quandlcode == m4spx_1871_p:
+          df = getm4spx_1871_p()
+     elif quandlcode == m4spx_1871_e:
+          df = getm4spx_1871_e()
+     elif quandlcode == m4spx_1871_d:
+          df = getm4spx_1871_d()
+
      elif quandlcode[:2] == 'f4':
           df = getfut( quandlcode )
 
@@ -484,9 +560,11 @@ def getqdl( quandlcode, maxi=87654321 ):
      #                  for "transformation" and "collapse" (resampling), 
      #                  call quandl() directly.
      #
-     #         NO NULLS finally, esp. for synthetics derived from 
-     #         overlapping indexes, noting that in general: 
-     #         readfile does fillna with pad beforehand.
+     #         _Give default fecon235 names to column and index:
+     df = tools.names( df )
+     #         Finally NO NULLS, esp. for synthetics derived from 
+     #         overlapping indexes (note that readfile does 
+     #         fillna with pad beforehand):
      return df.dropna()
 
 
@@ -519,83 +597,6 @@ def holtqdl( data, h=24, alpha=ts.hw_alpha, beta=ts.hw_beta ):
      return ts.holtforecast( holtdf, h )
 
 
-
-
-
-#  #  ======================================== yi_fred.py module =============
-#  
-#  
-#  #  For details on frequency conversion, see McKinney 2103, 
-#  #       Chp. 10 Resampling, esp. Table 10-5 on downsampling.
-#  #       pandas defaults are:
-#  #            how='mean', closed='right', label='right'
-#  #
-#  #  2014-08-10  closed and label to the 'left' conform to FRED practices.
-#  #              how='median' since it is more robust than 'mean'. 
-#  #  2014-08-14  If upsampling, interpolate() does linear evenly, 
-#  #              disregarding uneven time intervals.
-#  
-#  
-#  def daily( dataframe ):
-#       '''Resample data to daily using only business days.'''
-#       #                         'D' is used calendar daily
-#       #                          B  for business daily
-#       df =   dataframe.resample('B', how='median', 
-#                                      closed='left', label='left', 
-#                                      fill_method=None)
-#       #       how= for downsampling, fill_method= for upsampling.
-#       return df.interpolate(method='linear')
-#       #         ^applies to nulls, if upsampling.
-#  
-#  
-#  def monthly( dataframe ):
-#       '''Resample data to FRED's month start frequency.'''
-#       #  FRED uses the start of the month to index its monthly data.
-#       #                         'M' is used for end of month.
-#       #                          MS for start of month.
-#       df =   dataframe.resample('MS', how='median', 
-#                                       closed='left', label='left', 
-#                                       fill_method=None)
-#       #        how= for downsampling, fill_method= for upsampling.
-#       return df.interpolate(method='linear')
-#       #         ^applies to nulls, if upsampling.
-#  
-#  
-#  def quarterly( dataframe ):
-#       '''Resample data to FRED's quarterly start frequency.'''
-#       #  FRED uses the start of the month to index its monthly data.
-#       #  Then for quarterly data: 1-01, 4-01, 7-01, 10-01.
-#       #                            Q1    Q2    Q3     Q4
-#       #
-#       #                          ______Start at first of months,
-#       #                          ______for year ending in indicated month.
-#       df =   dataframe.resample('QS-OCT', how='median', 
-#                                           closed='left', label='left', 
-#                                           fill_method=None)
-#       #            how= for downsampling, fill_method= for upsampling.
-#       return df.interpolate(method='linear')
-#       #         ^applies to nulls, if upsampling.
-#  
-#  
-#  
-#  def getm4eurusd( fredcode=d4eurusd ):
-#       '''Make monthly EURUSD, and try to prepend 1971-2002 archive.'''
-#       #  Synthetic euro is the average between 
-#       #                 DEM fixed at 1.95583 and 
-#       #                 FRF fixed at 6.55957.
-#       eurnow = monthly( getdata_fred( fredcode ) )
-#       try:
-#            eurold = readfile( 'FRED-EURUSD_1971-2002-ARC.csv.gz', compress='gzip' )
-#            eurall = eurold.combine_first( eurnow )
-#            #               ^appends dataframe
-#            print(' ::  EURUSD synthetically goes back monthly to 1971.')
-#       except:
-#            eurall = eurnow
-#            print(' ::  EURUSD monthly without synthetic 1971-2002 archive.')
-#       return eurall
-#  
-#  
-    
 
 
 #  #      __________ save and load dataframe by pickle. 

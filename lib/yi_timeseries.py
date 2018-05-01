@@ -1,7 +1,21 @@
-#  Python Module for import                           Date : 2015-12-20
+#  Python Module for import                           Date : 2017-04-11
 #  vim: set fileencoding=utf-8 ff=unix tw=78 ai syn=python : per Python PEP 0263 
 ''' 
 _______________|  yi_timeseries : essential time series functions.
+
+TESTS for this module are carried out in tests/test_timeseries.py 
+and the doctests there show numerical examples of how some of our 
+time-series algorithms are built.
+
+OPTIMIZATION will be carried out in separate modules to avoid clutter here. 
+For example, to optimize Holt-Winters parameters alpha and beta, 
+conditional on a particular dataset, for forecasting purposes (rather than 
+smoothing), please kindly see our module lib/ys_opt_holt.py
+
+USAGE of the code for the Holt-Winters time-series model is illustrated 
+in the Jupyter notebook at https://git.io/gdpspx which is a rendering of
+nb/fred-gdp-spx.ipynb in the fecon235 repository.
+
 
 REFERENCES:
 
@@ -23,6 +37,10 @@ See holt_winters_growth() vs. holt().
 
 
 CHANGE LOG  For latest version, see https://github.com/rsvp/fecon235
+2016-12-20  Update introduction: tests and optimization.
+2016-12-14  Fix initial guess of b[0] for holt_winters_growth(),
+               especially critical when beta=0 e.g. in new ema().
+2016-10-29  Per issue #5, ema() moved here from yi_1tools module.
 2015-12-20  python3 compatible: lib import fix.
 2015-12-17  python3 compatible: fix with yi_0sys
 2015-02-21  Add holtgrow and holtpc functions.
@@ -61,7 +79,8 @@ def holt_winters_growth( y, alpha=hw_alpha, beta=hw_beta ):
      l = np.zeros(( N, ))   #  Fill level array with zeros.
      l[0] = y[0]            #  Initialize level.
      b = np.zeros(( N, ))   #  Smoothed one-step growths.
-     b[0] = y[1] - y[0]     #  Let's guess better than dummy b[0]=0.
+     #  b[0] = y[1] - y[0]  #  Propagates errors if beta=0; fixed 2016-12-14:
+     b[0] = 0               #  Algorithmically the correct guess if beta=0.
      for i in range( 1, N ):
           l[i] = (alpha * y[i]) + (alphac * (l[i-1] + b[i-1]))
           ldelta = l[i] - l[i-1]
@@ -133,6 +152,14 @@ def plotholt( holtdf, h=12 ):
      #  plotdf will not work since index there is assumed to be dates.
      holtforecast( holtdf, h ).plot( title='Holt-Winters linear forecast')
      return
+
+
+def ema( y, alpha=0.20 ):
+     '''EXPONENTIAL MOVING AVERAGE using traditional weight arg.'''
+     #  y could be a dataframe.
+     #  ema is mathematically equivalent to holtlevel with beta=0,
+     #  thus issue #5 can be easily resolved for all pandas versions.
+     return holtlevel( y, alpha, beta=0 )
 
 
 if __name__ == "__main__":

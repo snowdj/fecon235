@@ -1,4 +1,4 @@
-## fecon235 : Computational data tools for financial economics ##
+## fecon235 : Computational tools for financial economics ##
 
 [![Join the chat at https://gitter.im/rsvp/fecon235](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/rsvp/fecon235?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
@@ -8,11 +8,6 @@ which are executable scripts capable of statistical
 computations, as well as, collection of raw data in real-time. 
 This serves to verify theoretical ideas and 
 practical methods interactively.
-
-The project derives from the seminar series held at the 
-University of California at Berkeley, jointly sponsored by the 
-Department of Economics and the Haas School of Business. 
-Selected topics are treated for replicable analysis.
 
 
 ### What is this repository for? ###
@@ -32,25 +27,25 @@ Economic Data bank which is accessed directly online using our interface.
 Other specialized data can be directly retrieved using our [Quandl] API 
 module, for example, futures prices. Data for stocks, mutual funds, and 
 ETFs is sourced from Yahoo Finance, but falls back on Google Finance. 
-All data access is designed to be completely *free* of charge.
+Data is designed to be accessible *free* of charge,
+and *interoperable* in different time frequencies.
 
 **Models:** our baseline is *Ferbus*, the 
-model used internally by the Federal Reserve Bank, 
-however at fecon235, the accuracy of out-of-sample forecasts 
-takes precedence over traditional measures of model fit. 
+model used internally by the Federal Reserve Bank.
 We also develop tools for asset pricing and portfolio optimization, 
 in addition to econometric models.
 
 
 ### How does one get started? ###
 
-* We rely primarily on Python, especially the Jupyter/IPython notebook 
-  and pandas packages (though the R kernel may be used as needed). 
-
 * Deployment: the best reference to the Python ecosystem for financial economists 
   is the Quantitative Economics site by Thomas [Sargent]. 
 
-* Dependencies: pandas > 0.16 is highly recommended. 
+* We rely especially on the IPython, Jupyter notebook,
+  and pandas packages (though the R kernel may be used as needed). 
+  For the fecon235 installation FAQ, please see https://git.io/econ
+
+* Dependencies: pandas 0.18 or higher is required as of our v5. 
   All modules are tested against both Python 2.7 and 3 series. 
   User code has been rewritten for cross-platform performance 
   (Linux, Mac, and Windows).
@@ -59,6 +54,10 @@ in addition to econometric models.
   distribution which includes about 200 of the most useful Python packages 
   for science, math, engineering, data analysis. 
   It will resolve your headaches due to dependency hell.
+
+* Docker container (optional): instantly run fully-configured programs and 
+  interactive notebooks; start by: `docker pull rsvp/fecon235` # see our 
+  [Docker] image for details.  
 
 * Updates: for pre-2016 notebooks, please use import style 
   discussed in *docs* README: https://git.io/fecon-intro 
@@ -86,10 +85,18 @@ If you had executed that notebook locally, it would
 have also retrieved the latest available data and 
 recomputed the results.
 
+How is worker's wage correlated with GDP output? See https://git.io/gdpwage
+How much Federal debt must each worker assume? And how fast is the
+US government debt increasing? https://git.io/debtpop
+
 To score the Federal Reserve's performance under its dual
 mandate for inflation and unemployment, see https://git.io/fed
 (where tangentially the Phillips curve is discredited by constructing
-heat map scatter plots). Please see https://git.io/fedfunds 
+heat map scatter plots). 
+Notebook https://git.io/infl gives an in-depth analysis of inflation,
+including a combined forecast using three orthogonal methods.
+
+Please see https://git.io/fedfunds 
 to forecast the Fed Funds rate using futures contracts on LIBOR.
 
 The notebook https://git.io/cotr discerns how various asset classes 
@@ -98,26 +105,37 @@ given in https://git.io/georet using geometric mean returns.
 
 In https://git.io/gold we make a conjecture that 
 real gold prices is a stationary time-series bound by real interest rates.
+In https://git.io/xbt Bitcoin is statistically analyzed as a financial asset.
+We examine the crude oil markets, specifically the Brent over WTI spread,
+and construct an optimal portfolio, in https://git.io/oil .
 
 SEC 13F filings can be easily parsed, see https://git.io/13F
 where we track asset managers Stanley Druckenmiller and John Paulson.
 
+In https://git.io/equities we examine the separable components
+of total return for equities, especially due to enterprise earnings
+and market speculation, using S&P data assembled by Robert Shiller
+which goes back to the year 1871.
+In https://git.io/gdpspx we examine the close relationship between the
+real economy and the equities market, while demonstrating
+the Holt-Winters time-series model for predictions.
+
+In https://git.io/gmix we analytically and visually show how a Gaussian
+Mixture model handles "fat tail" risk of leptokurtotic financial assets
+under small-sample conditions.
+Markowitz portfolios, designed in the arithmetic mean-variance framework
+for a static period, are notoriously fragile when markets change.
+In contrast, our Boltzmann portfolios are adaptive over multi-periods to
+*geometrically* maximize wealth using techniques from reinforcement learning.
+Part 1: https://git.io/boltz1 Part 2: https://git.io/boltz2
+
 
 ### Useful modules ###
 
-These are some of our Python modules in the `lib` directory:
-
-* yi_1tools : essential utility functions.
-* yi_plot : plot functions and visualizations.
-* yi_timeseries : time series functions and filters.
-* yi_simulation : building blocks for simulations.
-* yi_fred : Freely access FRED Federal Reserve data with pandas.
-* yi_quandl : Access free Quandl and government data with pandas.
-* yi_stocks : Get stock, mutual fund, and ETF quotes with pandas.
-
-For Jupyter notebooks and interactive sesssions, 
+Our Python modules are in the `lib` directory, however,
+for Jupyter notebooks and interactive sessions, 
 only one module **fecon235** needs to be imported; 
-please consult https://git.io/fecon-intro for details.
+please see https://git.io/fecon-intro for details.
 The commands are very easy to customize, 
 producing sophisticated results quickly 
 without tweaking the underlying numerical packages.
@@ -128,14 +146,54 @@ without tweaking the underlying numerical packages.
 * Guidelines: we welcome your [pull request] to improve our code. 
   Details are outlined in [Development].
 
-* For fecon235 presentations: contact us if you need help 
-  incorporating your material into an auxiliary repository.
-
 Lead developer is Adriano rsvp.github.com: [admin]. 
 Please join our chat with fellow users and developers at [Gitter].
 
+The project derives from the seminar series held at the 
+University of California at Berkeley, jointly sponsored by the 
+Department of Economics and the Haas School of Business. 
+We are also grateful to BIDS, Berkeley Institute for Data Science,
+for their technical support.
+
+
+![fecon235-wordclouds.jpg](https://git.io/fecon235words)
+
 
 ### Partial contents of nb directory ###
+
+##### [gauss-mix-kurtosis.ipynb](https://github.com/rsvp/fecon235/blob/master/nb/gauss-mix-kurtosis.ipynb) : Gaussian Mixture and Leptokurtotic Assets
+
+Gaussian Mixture GM(n) can create distributions with leptokurtosis ("fat
+tails"). Our problem is the inverse: from observable statistics, deduce the
+model parameters analytically. We demonstrate how a GM(2) model can
+synthesize Gaussian risk-equivalence for leptokurtotic financial assets.
+A numerical solution provides accurate probabilities which can be used to
+experimentally understand how kurtosis itself is distributed under
+small-sample conditions. The non-Gaussian distributions are visualized through
+quantile-quantile probability plots. Shortcut: https://git.io/gmix
+
+##### [prtf-boltzmann-1.ipynb](https://github.com/rsvp/fecon235/blob/master/nb/prtf-boltzmann-1.ipynb) : Boltzmann portfolios
+
+We develop an alternative to the Markowitz framework
+called Boltzmann portfolios which handle uncertainty from the 
+standpoint of cross-entropy and optimal sequential decisions.
+The improved result is a faster online algorithm which is more robust.
+Markowitz portfolios are designed in the arithmetic mean-variance framework
+for a static period, and are fragile to changing market conditions.
+In contrast, Boltzmann portfolios are adaptive over multi-periods to
+geometrically maximize wealth using techniques from reinforcement learning.
+Part 1: https://git.io/boltz1 Part 2: https://git.io/boltz2
+
+##### [qdl-spx-earn-div.ipynb](https://github.com/rsvp/fecon235/blob/master/nb/qdl-spx-earn-div.ipynb) : Separable components of total return for equities
+
+We specify a model for equity returns by decomposition into enterprise and
+speculative returns, plus dividend yield. That model is then tested using stock market
+data going back to the year 1871 (well-known database assembled by Robert Shiller).
+An understanding of their respective contributions helps us to form
+better informed expectations of total return for equities.
+We demonstrate that the (arithmetic) percentage reasoning is prone is large errors,
+whereas a logarithmic (geometric) version is exact.
+Shortcut: https://git.io/equities or https://git.io/spx
 
 ##### [qdl-libor-fed-funds.ipynb](https://github.com/rsvp/fecon235/blob/master/nb/qdl-libor-fed-funds.ipynb) : Use pandas to analyze short-term rates
 
@@ -153,7 +211,18 @@ The *London Bullion Market Association* ceased publishing daily data
 on their *Gold Forward Offered Rate* (**GOFO**), as of 30 January 2015 -- 
 so we develop an observable proxy called *tango* using gold futures 
 and LIBOR. This supply/demand indicator is then compared against 
-spot prices. 
+change in spot prices. Observed strong correlations appear 
+to be artificial. Shortcut: https://git.io/xau-contango
+
+##### [qdl-xbt-bitcoin.ipynb](https://github.com/rsvp/fecon235/blob/master/nb/qdl-xbt-bitcoin.ipynb) : Statistical analysis of Bitcoin as financial asset
+
+We first examine time-series data for price, mining, and capitalization of Bitcoin, 
+then optimize a robust model for the extremely volatile USD price series.
+Taking the viewpoint of a Chinese user we perform a comparative valuation in 
+Chinese yuan, and also cross-check with the perennial store of value: gold.
+The astonishing volatility and geometric return makes Bitcoin a 
+speculative financial asset which may hinder it as a payment system.
+Shortcut: https://git.io/xbt
 
 ##### [qdl-COTR-positions.ipynb](https://github.com/rsvp/fecon235/blob/master/nb/qdl-COTR-positions.ipynb) : Use pandas to read CFTC COTR
 
@@ -176,7 +245,15 @@ Shortcut: https://git.io/13F
 
 ##### [fred-debt-pop.ipynb](https://github.com/rsvp/fecon235/blob/master/nb/fred-debt-pop.ipynb) : Growth of Federal debt, its burden on the US population  
 
-We examine government debt in real terms, and the current debt per capita.  
+We examine US government debt in real terms, and the current Federal debt per capita. 
+Shortcut: https://git.io/debtpop
+
+##### [fred-employ-nfp.ipynb](https://github.com/rsvp/fecon235/blob/master/nb/fred-employ-nfp.ipynb) : US employment data, Nonfarm Payroll
+
+We focus on forecasting the monthly change in NFP using a variety of optics:
+baseline expectation since 1939, Holt-Winters method, visual selection of local range,
+regression against economic activity (SPX) -- but the
+standard errors are inherently very large due to survey measurement error.
 
 ##### [fred-eur-fx.ipynb](https://github.com/rsvp/fecon235/blob/master/nb/fred-eur-fx.ipynb) : Euro currency qua Foreign Exchange  
 
@@ -193,14 +270,16 @@ foreign exchange rate, comparative GDP. Appendix 1 concisely explains the
 ##### [fred-gdp-spx.ipynb](https://github.com/rsvp/fecon235/blob/master/nb/fred-gdp-spx.ipynb) : US real GDP vs. SPX: Holt-Winters time series forecasting  
 
 We examine the US gross domestic product's relationship to the US equity
-market, in real terms. Forecasts for both are demonstrated using Holt-Winters
-technique. We derive the most likely range for real GDP growth, and identify
-excessive equity valuations aside from inflationary pressures.   
+market (S&P 500), in real terms. Forecasts for both are demonstrated 
+using the **Holt-Winters time-series model**. We derive the most likely range 
+for real GDP growth, and identify extreme equity valuations aside from 
+inflationary pressures. Shortcut: https://git.io/gdpspx
 
 ##### [fred-gdp-wage.ipynb](https://github.com/rsvp/fecon235/blob/master/nb/fred-gdp-wage.ipynb) : U.S. GDP vs. Wage Income 
 
-For every wage dollar paid, what is GDP output?  In answering this question,
-we derive a model for GDP growth based on observations from wage growth.  
+How is wage correlated with GDP output?  In answering this question,
+we derive a model for GDP growth based on observations from wage growth. 
+Shortcut: https://git.io/gdpwage
 
 ##### [fred-georeturns.ipynb](https://github.com/rsvp/fecon235/blob/master/nb/fred-georeturns.ipynb) : Comparative geometric mean returns
 
@@ -220,9 +299,11 @@ Shortcut: https://git.io/housing
 ##### [fred-inflation.ipynb](https://github.com/rsvp/fecon235/blob/master/nb/fred-inflation.ipynb) : Inflation data from FRED using pandas
 
 We examine inflation data: CPI and PCE, including the core versions, along
-with the 10-year BEI rate (break-even inflation). We also examine gold returns
-and its correlations to inflation. A combined inflation statistic *m4infl* is
-defined, and we make some forecasts. Shortcut: https://git.io/infl
+with the 10-year BEI rate (break-even inflation) from the bond market.
+A unified inflation statistic *m4infl* is introduced,
+which leads to the estimation of the geometric mean rate.
+A robust optimized Holt-Winters model is used for forecasting.
+Shortcut: https://git.io/infl
 
 ##### [fred-infl-unem-fed.ipynb](https://github.com/rsvp/fecon235/blob/master/nb/fred-infl-unem-fed.ipynb) : Score for the Fed's dual mandate
 
@@ -231,7 +312,7 @@ gives a numerical score to the Fed's performance on its dual mandate.
 The key is to find comparable units to measure performance and a suitable
 scalar measure to show deviation from the dual mandate. The visualization
 includes sequential scatter plots using color heat map, which can be 
-extended to studies of the Phillips curve.
+extended to studies of the Phillips curve. Shortcut: https://git.io/phillips
 
 ##### [fred-infl-velocity.ipynb](https://github.com/rsvp/fecon235/blob/master/nb/fred-infl-velocity.ipynb) : Inflation, money velocity, and interest rates  
 
@@ -242,9 +323,13 @@ relationship with GDP and the money supply in a fitted equation.
 
 ##### [fred-oil-brent-wti.ipynb](https://github.com/rsvp/fecon235/blob/master/nb/fred-oil-brent-wti.ipynb) : Oil: Brent vs. West Texas Intermediate (WTI)
 
-We examine the history of oil prices, and their spreads. Real prices give
-additional insight, along with some of the statistical characteristics used in
-financial economics.
+We examine the history of crude oil prices, and their spreads.
+A Boltzmann portfolio is computed for *optimal* financial positions.
+Deflated prices give additional insight, along with some of the statistical
+tools useful in financial economics.
+Although WTI is more desirable than Brent from a petrochemical perspective,
+that preference is reversed when the metrics are financial.
+Shortcut: https://git.io/oil
 
 ##### [fred-usd-RTB-xau.ipynb](https://github.com/rsvp/fecon235/blob/master/nb/fred-usd-RTB-xau.ipynb) : Real trade-weighted indexes for USD, gold, and SPX  
 
@@ -281,11 +366,12 @@ Shortcut: https://git.io/gold
 
 - - - -
 
-Revision date : 2016-02-23
+Revision date : 2018-03-07
 
 [admin]:        https://rsvp.github.com "Adriano rsvp.github.com"
 [Anaconda]:     http://continuum.io/downloads "Anaconda Python distribution"
 [Development]:  https://github.com/rsvp/fecon235/blob/master/.github/CONTRIBUTING.md "Development"
+[Docker]:       https://hub.docker.com/r/rsvp/fecon235 "Docker image rsvp/fecon235"
 [FRED]:         http://research.stlouisfed.org/fred2/ "Federal Reserve Economic Data"
 [Gitter]:       https://gitter.im/rsvp/fecon235 "Gitter fecon235"
 [intro page]:   http://rsvp.github.com/pg/fecon235-intro.html "fecon235 Introduction"
